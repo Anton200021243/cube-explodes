@@ -8,7 +8,6 @@ public class Cube : MonoBehaviour
     [SerializeField] private Rigidbody _prefab;
 
     private static float _separationChance;
-    private List<Rigidbody> _spawnedObjects = new List<Rigidbody>();
 
     private void Start()
     {
@@ -18,15 +17,14 @@ public class Cube : MonoBehaviour
     private void OnMouseUpAsButton()
     {
         Destroy(gameObject);
-        SpawnNewObjects();
-        Explode();
+        SpawnNewObjects();        
     }
 
-    private void Explode()
+    private void Explode(List<Rigidbody> objects, float explosionForce, float explosionRaduis)
     {
-        foreach (Rigidbody explodableObject in _spawnedObjects)
+        foreach (Rigidbody explodableObject in objects)
         {
-            explodableObject.AddExplosionForce(_explosionForce, transform.position, _explosionRadius);
+            explodableObject.AddExplosionForce(explosionForce, transform.position, explosionRaduis);
         }
     }
 
@@ -36,17 +34,36 @@ public class Cube : MonoBehaviour
         {
             int randomSpawnCubes = Random.Range(2, 7);
             Vector3 currentPosition = transform.position;
+
+            List<Rigidbody> spawnedObjects = new();
+
             _prefab.transform.localScale = new Vector3(_prefab.transform.localScale.x / 2, _prefab.transform.localScale.y / 2, 
                 _prefab.transform.localScale.z / 2);
 
             for (int i = 0; i < randomSpawnCubes; i++)
             {
                 _prefab.GetComponent<Renderer>().material.color = Random.ColorHSV(0f, 1f, 1f, 1f, 0.5f, 1f);
-                _spawnedObjects.Add(Instantiate(_prefab, currentPosition, Quaternion.identity));
+                spawnedObjects.Add(Instantiate(_prefab, currentPosition, Quaternion.identity));
                 currentPosition += new Vector3(Random.Range(-1f, 1f), Random.Range(0, 1f), Random.Range(-1f, 1f));
             }
 
             _separationChance /= 2;
+
+            Explode(spawnedObjects, _explosionForce, _explosionRadius);
+        }
+        else
+        {
+            Collider[] hits = Physics.OverlapSphere(transform.position, _explosionRadius / _prefab.transform.localScale.x);
+
+            List<Rigidbody> cubes = new();
+
+            foreach (Collider hit in hits)
+            {
+                if (hit.attachedRigidbody != null)
+                    cubes.Add(hit.attachedRigidbody);
+            }
+
+            Explode(cubes, _explosionForce / _prefab.transform.localScale.x, _explosionRadius / _prefab.transform.localScale.x);
         }
     }
 }
